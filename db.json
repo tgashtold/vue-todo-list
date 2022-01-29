@@ -1,0 +1,16 @@
+{
+  "todos": [{
+      "toDo": "Clean Room",
+      "done": false
+    },
+    {
+      "toDo": "Feed Cat",
+      "done": true
+    },
+    {
+      "toDo": "Find hotel in Georgia",
+      "done": false
+    }
+  ]
+
+}
