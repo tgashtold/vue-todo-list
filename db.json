@@ -13,6 +13,51 @@
       "id": 3,
       "toDo": "Find hotel in Georgia",
       "done": false
+    },
+    {
+      "id": 4,
+      "toDo": "Cook Dinner",
+      "done": false
+    },
+    {
+      "id":5,
+      "toDo": "Go Shopping",
+      "done": true
+    },
+    {
+      "id": 6,
+      "toDo": "Meet with Peter",
+      "done": false
+    },
+    {
+      "id": 7,
+      "toDo": "Clean teeth",
+      "done": false
+    },
+    {
+      "id":8,
+      "toDo": "Make english homework",
+      "done": true
+    },
+    {
+      "id": 9,
+      "toDo": "Read book",
+      "done": false
+    },
+    {
+      "id": 10,
+      "toDo": "Sort rubish",
+      "done": false
+    },
+    {
+      "id":11,
+      "toDo": "Go to gym",
+      "done": true
+    },
+    {
+      "id": 12,
+      "toDo": "Watch new podcast",
+      "done": false
     }
   ]
 }
