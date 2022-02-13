@@ -126,9 +126,6 @@ export default {
       this.display = undefined;
     }
   },
-  mounted() {
-    this.filteredEmployees = this.employees;
-  },
   filters: {
     capitalize(name) {
       return name.split(/\s+/).map(part => part.charAt(0).toUpperCase() + part.toLowerCase().slice(1)).join(' ');

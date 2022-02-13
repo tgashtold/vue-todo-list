@@ -1,94 +1,136 @@
 <template>
-  <div class="d-flex justify-content-center">
+  <div class="d-flex justify-content-center pb-5">
     <div :style="{width:'70%'}">
       <div class="d-flex justify-content-center">
         <h3 class="mb-5">TO DO LIST</h3>
       </div>
-      <div class="d-flex justify-content-center mb-4">
-        <input type="text" v-model="newToDo" :style="{width:'100%', marginRight:'1rem', padding: '5px 10px'}" placeholder="Enter ToDo">
+
+      <NewToDo class="mb-4" @newToDo="addToDo"/>
+        <!-- <input type="text" v-model="newToDo" :style="{width:'100%', marginRight:'1rem', padding: '5px 10px'}" placeholder="Enter ToDo">
         <button type="button" class="btn btn-primary" @click="addToDo">Add</button>
-      </div>
-      <input type="text" :style="{width:'100%',  padding: '5px 10px'}" class="mb-3"  v-model="query" placeholder="Rearch">
-      <ul class="list-group" v-if="filteredToDoes.length">
-        <li v-for="todo in pageToDoes" class="list-group-item" :key="todo.id">
-          <div v-if="!underEditing(todo.id)" class="d-flex  justify-content-between">
-            <p v-if="!todo.done">{{todo.toDo}}</p>
-            <p v-if="todo.done"><del>{{todo.toDo}}</del></p>
-            <div class="btn-group"  role="group" aria-label="Basic example">
-              <button type="button"  @click="toggleToDo(todo.id)" class="btn btn-success">{{todo.done ? 'Undone': 'Done'}}</button>
-              <button type="button" class="btn btn-primary" @click="editToDo(todo.id)">Edit</button>
-              <button type="button" class="btn btn-danger" @click="deleteToDo(todo.id)">Delete</button>
-            </div>
-          </div>
-          <div v-else class="d-flex  justify-content-between">
-            <input type="text" v-model="todo.toDo" :style="{width:'100%', marginRight:'1rem', padding: '5px 10px'}" placeholder="ToDo">
-            <div class="btn-group" role="group" aria-label="Basic example">
-              <button type="button" class="btn btn-primary" @click="saveToDo(todo.id)">Save</button>
-              <button type="button" class="btn btn-danger" @click="cancelToDo(todo.id)">Cancel</button>
-            </div>
-          </div>
+      </div> -->
+      <Search 
+        :style="{width:'100%',  padding: '5px 10px'}" 
+        class="mb-3"
+        @queryChanged="onSearch"
+        v-model="query"
+      />
+      <button type="button" class="btn btn-info my-3 w-100" @click="switchMode">{{lazyLoading ? "Pagination" : "Infinite Scroll"}}</button>
+    <div>
+      <ul class="list-group"  v-if="filteredToDoes.length">
+        <li 
+          is="ToDoItem"  
+          v-for="todo in pageToDoes" 
+          class="list-group-item" 
+          :key="todo.id" 
+          :todo="todo"
+          @toggle="toggleToDo"
+          @save="saveToDo"
+          @delete="deleteToDo"
+          @cancel="cancelToDo"
+          @edit="editToDo"
+        >
+        <template v-slot:toDoText>
+          <p v-if="!todo.done" :class="{'text-danger': todo.toDo.toLowerCase().includes('urgent') }">{{todo.toDo}}</p>
+          <p v-if="todo.done"><del>{{todo.toDo}}</del></p>
+        </template>
         </li>
+     
       </ul>
       <div v-else>
         <p>No Items In ToDo List</p>
       </div>
-      <nav aria-label="Page navigation example" v-if="filteredToDoes.length" class="mt-3">
-        <ul class="pagination justify-content-center">
-          <li :class="{'page-item': true, disabled: currentPage === 1}" @click="prevPage"><a class="page-link" href="#">Prev</a></li>
-          <li :class="{'page-item': true, active: page === currentPage}" v-for="page in pagesCount" :key="page" @click="switchPage(page)"><a class="page-link"  >{{page}}</a></li>
-          <li :class="{'page-item': true, disabled: currentPage === pagesCount}" @click="nextPage"><a class="page-link" href="#">Next</a></li>
-        </ul>
-      </nav>
+         <div ref="preloader"  class="d-flex justify-content-center">
+           <div v-if="filteredToDoes.length && lazyLoading && loading" class="spinner-border text-dark my-3" role="status">
+            <span class="sr-only"></span>
+          </div>
+         </div>
+      </div>
+      <Pagination 
+        v-if="filteredToDoes.length && !lazyLoading" 
+        class="mt-3"
+        :currentPage="currentPage"
+        :pagesCount="pagesCount"
+        @pageChange="switchPage"
+      />
+
     </div>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import ToDoItem from '@/components/ToDoesComponents/ToDoItem.vue'
+import Pagination from '../components/ToDoesComponents/Pagination.vue';
+import Search from '../components/ToDoesComponents/Search.vue';
+import NewToDo from '../components/ToDoesComponents/NewToDo.vue';
+
 const API_URL = 'https://my-json-server.typicode.com/tgashtold/vue-todo-list/todos';
 const itemsPerPage = 10;
 
 export default {
   name: 'Home',
+  components:{ ToDoItem, 
+  Pagination, 
+  Search, NewToDo},
   data: ()=> ({
+    lazyLoading: true,
+    loading: false,
     toDoes: [],
     newToDo: '',
     editedToDoes: [],
     query: '',
-    currentPage: 1
+    currentPage: 1,
+    observer: null
   }),
   mounted: function() {
      axios.get(API_URL).then((res) => {
       this.toDoes = res.data;
+      this.initPreloader();
     }).catch((err) => {
       console.log(err)
     })
   },
   methods: {
-    prevPage() {
-      if(this.currentPage !== 1){
-        this.currentPage = --this.currentPage;
+    switchMode() {
+      this.lazyLoading = !this.lazyLoading;
+      this.currentPage = 1;
+      if (this.lazyLoading) {
+        this.observer.observe(this.$refs.preloader);
       }
+      else {
+        this.observer.unobserve(this.$refs.preloader);
+      }
+
     },
-    nextPage() {
-      if (this.currentPage !== this.pagesCount) {
-        this.currentPage = ++this.currentPage;
+    initPreloader() {
+      const todoList = this;
+
+      this.observer = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting && todoList.filteredToDoes.length > todoList.pageToDoes.length) {
+          todoList.loading = true;
+
+          setTimeout(() => {
+            todoList.loading = false;
+            ++todoList.currentPage;
+          }, 2000)
+          console.log(666, entries)
+        }
+      }, { threshold: 1});
+
+      if (this.lazyLoading) {
+        this.observer.observe(this.$refs.preloader);
       }
+
+    },
+    onSearch(value) {
+      this.query = value;
     },
     switchPage(page) {
       this.currentPage = page;
     },
-    addToDo(){
-      const toDo = this.newToDo.trim();
-
-      if (toDo.length) {
-        this.toDoes.unshift({
-          toDo,
-          done:false,
-          id: Math.random() * 10000
-        });
-        this.newToDo = '';
-      }
+    addToDo(todo){
+      this.toDoes.unshift(todo);
     },
     deleteToDo(id) {
       this.toDoes = this.toDoes.filter(todo => todo.id !== id);
@@ -137,10 +179,15 @@ export default {
     },
     pagesCount() {
       const items = this.filteredToDoes.length;
-      return items ? Math.ceil(items/itemsPerPage) : null;
+      return items ? Math.ceil(items/itemsPerPage) : 0;
     },
     pageToDoes() {
+      if(!this.lazyLoading) {
+        console.log(777)
       return this.filteredToDoes.slice((this.currentPage-1)*itemsPerPage, this.currentPage*itemsPerPage);
+      }
+      console.log(888, this.currentPage)
+      return this.filteredToDoes.slice(0, this.currentPage*itemsPerPage)
     }
   },
 }
